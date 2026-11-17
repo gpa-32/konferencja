@@ -115,7 +115,17 @@ if [ "$OWN_CADDY" = 0 ]; then
           docker network connect "$CNET" konferencja-app-1 2>/dev/null || true
           UPSTREAM="konferencja-app-1:8000"
         fi
-        if ! grep -qE "^\s*$DOMAIN\b" "$SRC"; then
+        if grep -qE "^\s*$DOMAIN\b" "$SRC"; then
+          # Wpis dla domeny już istnieje – użyj portu, na który kieruje (np. przygotowany wcześniej 8100).
+          EXIST=$(awk -v d="$DOMAIN" '$1==d {f=1} f && /reverse_proxy/ {print $2; exit}' "$SRC")
+          EPORT=${EXIST##*:}
+          if [ "$NET" = "host" ] && [ -n "$EPORT" ] && [ "$EPORT" != "$APP_PORT" ]; then
+            echo "Istniejący wpis $DOMAIN kieruje na port $EPORT – przestawiam aplikację na ten port."
+            sed -i "s/^APP_PORT=.*/APP_PORT=$EPORT/" .env
+            APP_PORT=$EPORT
+            docker compose up -d
+          fi
+        else
           cp "$SRC" "$SRC.bak.$(date +%s)"
           printf '\n%s {\n\tencode gzip\n\treverse_proxy %s\n}\n' "$DOMAIN" "$UPSTREAM" >> "$SRC"
         fi
