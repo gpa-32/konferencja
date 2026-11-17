@@ -297,18 +297,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun doAction(action: String, bookingId: Int? = null, minutes: Int? = null, start: Long? = null) {
+    private fun doAction(action: String, bookingId: Int? = null, minutes: Int? = null, start: Long? = null,
+                         title: String? = null) {
         val needAuth = state?.optJSONObject("device")?.optBoolean("require_auth") == true
         if (needAuth) {
-            askAuth { pin, nfc -> sendAction(action, bookingId, minutes, start, pin, nfc) }
+            askAuth { pin, nfc -> sendAction(action, bookingId, minutes, start, title, pin, nfc) }
         } else {
-            sendAction(action, bookingId, minutes, start, null, null)
+            sendAction(action, bookingId, minutes, start, title, null, null)
         }
     }
 
-    private fun sendAction(action: String, bookingId: Int?, minutes: Int?, start: Long?, pin: String?, nfc: String?) {
+    private fun sendAction(action: String, bookingId: Int?, minutes: Int?, start: Long?, title: String?,
+                           pin: String?, nfc: String?) {
         val body = JSONObject().put("action", action)
         start?.let { body.put("start", it) }
+        title?.let { body.put("title", it) }
         bookingId?.let { body.put("booking_id", it) }
         minutes?.let { body.put("minutes", it) }
         pin?.let { body.put("pin", it) }
@@ -629,6 +632,13 @@ class MainActivity : AppCompatActivity() {
                 durations.map { label(it) })
             setSelection(durations.indexOf(30))
         }
+        val topic = EditText(this).apply {
+            hint = "Temat spotkania"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+            setSingleLine()
+            textSize = 20f
+        }
+        box.addView(topic)
         box.addView(group)
         box.addView(picker)
         box.addView(durLabel)
@@ -639,8 +649,9 @@ class MainActivity : AppCompatActivity() {
             .setView(android.widget.ScrollView(this).apply { addView(box) })
             .setPositiveButton("Zarezerwuj") { _, _ ->
                 val minutes = durations[spinner.selectedItemPosition]
+                val title = topic.text.toString().trim().ifEmpty { null }
                 if (rNow.isChecked) {
-                    doAction("book_now", minutes = minutes)
+                    doAction("book_now", minutes = minutes, title = title)
                 } else {
                     val h = picker.hour
                     val m = picker.minute
@@ -652,7 +663,7 @@ class MainActivity : AppCompatActivity() {
                     if (start < nowServer() - 60_000) {
                         toast("Ta godzina już minęła")
                     } else {
-                        doAction("book", minutes = minutes, start = start)
+                        doAction("book", minutes = minutes, start = start, title = title)
                     }
                 }
             }

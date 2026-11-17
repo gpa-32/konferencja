@@ -199,6 +199,7 @@ class ActionIn(BaseModel):
     minutes: int = 30
     # Dla "book": początek w ms od epoki (UTC); brak lub teraz = rezerwacja od teraz
     start: int | None = None
+    title: str | None = None
     pin: str | None = None
     nfc_uid: str | None = None
 
@@ -236,6 +237,7 @@ def action(body: ActionIn, dev: Device = Depends(current_device), db: Session = 
     actor = f"tablet:{dev.id}" + (f" ({user.email})" if user else "")
     try:
         organizer = (user.email, user.name) if user else ("", "")
+        title = (body.title or "").strip()[:200] or "Rezerwacja z tabletu"
         if body.action in ("book_now", "book"):
             if not 5 <= body.minutes <= 480:
                 raise HTTPException(400, "Nieprawidłowy czas")
@@ -244,11 +246,11 @@ def action(body: ActionIn, dev: Device = Depends(current_device), db: Session = 
             if body.action == "book" and body.start:
                 start = datetime.fromtimestamp(body.start / 1000, tz=ZoneInfo("UTC")).replace(tzinfo=None)
             if start is None or start <= now + timedelta(minutes=1):
-                svc.book_now(db, tenant, room, body.minutes, actor, organizer=organizer)
+                svc.book_now(db, tenant, room, body.minutes, actor, title=title, organizer=organizer)
             else:
                 if start > now + timedelta(days=7):
                     raise HTTPException(400, "Rezerwacja z tabletu – najwyżej 7 dni do przodu")
-                svc.create_booking(db, tenant, room, title="Rezerwacja z tabletu", start=start,
+                svc.create_booking(db, tenant, room, title=title, start=start,
                                    end=start + timedelta(minutes=body.minutes), organizer=organizer,
                                    attendees=[], source="tablet", actor=actor)
         else:

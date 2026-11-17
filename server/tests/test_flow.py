@@ -229,11 +229,13 @@ def test_tablet_book_with_start(client):
     H = {"Authorization": f"Bearer {tok}"}
     start = (utcnow() + timedelta(days=3)).replace(hour=10, minute=0, second=0, microsecond=0)
     ms = int(start.replace(tzinfo=ZoneInfo("UTC")).timestamp() * 1000)
-    r = client.post("/api/device/action", headers=H, json={"action": "book", "start": ms, "minutes": 45})
+    r = client.post("/api/device/action", headers=H, json={"action": "book", "start": ms, "minutes": 45,
+                                                              "title": "Spotkanie z klientem"})
     assert r.status_code == 200, r.text
     db = SessionLocal()
     b = db.query(Booking).filter_by(start=start).one()
     assert b.end - b.start == timedelta(minutes=45) and b.source == "tablet"
+    assert b.title == "Spotkanie z klientem"
     db.close()
     # kolizja
     r = client.post("/api/device/action", headers=H, json={"action": "book", "start": ms + 15 * 60000, "minutes": 30})
