@@ -16,6 +16,8 @@ android {
         targetSdk = 34
         versionCode = buildNumber
         versionName = "1.0.$buildNumber"
+        // Domyślny adres serwera wpisany w ekranie rejestracji
+        buildConfigField("String", "DEFAULT_SERVER", "\"https://konferencja.nettrade.pl\"")
     }
 
     signingConfigs {

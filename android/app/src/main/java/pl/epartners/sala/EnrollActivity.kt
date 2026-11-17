@@ -40,7 +40,7 @@ class EnrollActivity : AppCompatActivity() {
         message = findViewById(R.id.message)
         btnEnroll = findViewById(R.id.btnEnroll)
         val prefs = Prefs(this)
-        if (prefs.server.isNotEmpty()) server.setText(prefs.server)
+        server.setText(prefs.server.ifEmpty { BuildConfig.DEFAULT_SERVER })
 
         findViewById<Button>(R.id.btnScan).setOnClickListener {
             scan.launch(ScanOptions().setPrompt("Zeskanuj kod QR z panelu").setBeepEnabled(false)

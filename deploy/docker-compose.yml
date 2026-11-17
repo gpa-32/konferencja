@@ -1,3 +1,8 @@
+# Serwer systemu sal. Domyślnie bez własnego Caddy – aplikacja słucha na 127.0.0.1:${APP_PORT},
+# a ruch HTTPS przekazuje istniejący serwer www na VPS (Caddy/nginx). Gdy porty 80/443 są wolne,
+# install.sh uruchamia własny Caddy (profil "caddy").
+name: konferencja
+
 services:
   db:
     image: postgres:16-alpine
@@ -18,6 +23,8 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://sale:${POSTGRES_PASSWORD}@db:5432/sale
+    ports:
+      - "127.0.0.1:${APP_PORT:-8010}:8000"
     volumes:
       - appdata:/data
     depends_on:
@@ -27,16 +34,17 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    profiles: ["caddy"]
     ports: ["80:80", "443:443"]
     environment:
-      BASE_DOMAIN: ${BASE_DOMAIN}
+      DOMAIN: ${DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
     depends_on: [app]
 
-  # Opcjonalnie: własny serwer RustDesk do zdalnego podglądu tabletów (porty 21115-21117).
+  # Opcjonalnie: własny serwer RustDesk do zdalnego podglądu tabletów.
   rustdesk-hbbs:
     image: rustdesk/rustdesk-server:latest
     command: hbbs

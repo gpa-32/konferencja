@@ -8,7 +8,7 @@ def _env(name: str, default: str = "") -> str:
 
 DATABASE_URL = _env("DATABASE_URL", "sqlite:///./konferencja.db")
 SECRET_KEY = _env("SECRET_KEY", "dev-secret-change-me")
-# Publiczny adres serwera (https://sale.epartners.pl) – używany w kodach QR, webhookach Graph i linkach zgody M365.
+# Publiczny adres serwera (https://konferencja.nettrade.pl) – używany w kodach QR, webhookach Graph i linkach zgody M365.
 PUBLIC_URL = _env("PUBLIC_URL", "http://localhost:8000").rstrip("/")
 # Domena bazowa dla subdomen klientów: <slug>.BASE_DOMAIN
 BASE_DOMAIN = _env("BASE_DOMAIN", "")

@@ -21,8 +21,8 @@ a serwer synchronizuje się z kalendarzami Microsoft 365 (Google Workspace – e
 
 ## Funkcje (etap 1)
 
-- **Wielu klientów** – każdy klient ma subdomenę `<klient>.sale.epartners.pl`, własnych administratorów,
-  limity sal i tabletów; superadmin ePartners zarządza klientami pod `admin.sale.epartners.pl`.
+- **Wielu klientów** – własni administratorzy, limity sal i tabletów; wspólna domena
+  (`konferencja.nettrade.pl`) albo subdomena dla każdego klienta; superadmin ePartners zarządza klientami.
 - **Sale** – pojemność, skrzynka sali w M365, opiekun i zastępca, opcjonalny check-in.
 - **Tablety** – dodawanie kodem QR (jednorazowy, ważny 24 h); zdalnie z panelu: przypisanie sali,
   jasność, wygaszanie ekranu po godzinach, zrzut ekranu, restart aplikacji/tabletu, test LED,
@@ -39,29 +39,35 @@ a serwer synchronizuje się z kalendarzami Microsoft 365 (Google Workspace – e
 
 ## Uruchomienie na VPS
 
-Wymagania: Docker + docker compose, rekordy DNS `sale.epartners.pl` i `*.sale.epartners.pl` → IP VPS.
+Wymagania: VPS z Debianem/Ubuntu, rekord A domeny (np. `konferencja.nettrade.pl`) → IP VPS.
 
 ```bash
 git clone https://github.com/gpa-32/konferencja.git
 cd konferencja/deploy
-cp .env.example .env        # uzupełnij hasła, SECRET_KEY (openssl rand -hex 32), dane M365 i SMTP
-docker compose up -d --build
-# opcjonalnie własny serwer RustDesk do zdalnego podglądu tabletów:
-docker compose --profile rustdesk up -d
+sudo ./install.sh        # pyta o domenę i hasło superadmina; kolejne uruchomienie = aktualizacja
 ```
 
-Panel: `https://admin.sale.epartners.pl` – logowanie `SUPERADMIN_EMAIL` / `SUPERADMIN_PASSWORD`.
-Certyfikaty TLS dla subdomen klientów Caddy wystawia automatycznie przy pierwszym wejściu
-(tylko dla istniejących klientów – sprawdzane przez `/api/tls-check`).
+Skrypt instaluje Dockera (jeśli go nie ma), tworzy `deploy/.env` z losowymi hasłami i uruchamia
+PostgreSQL + aplikację. Jeśli porty 80/443 są wolne – uruchamia własny Caddy z certyfikatem Let's Encrypt.
+Jeśli zajmuje je już serwer www innego systemu na tym VPS (signage, Domofon SIP) – aplikacja działa
+na `127.0.0.1:8010`, a domena jest dopisywana do istniejącego Caddy (w systemie lub w kontenerze) albo nginx.
 
-Jeśli na tym samym VPS działa Asterisk (Domofon SIP), zalecany jest osobny VPS albo przynajmniej wolne porty 80/443.
+Panel: `https://konferencja.nettrade.pl` – logowanie superadmina z instalacji
+(losowe hasło zapisuje się w `deploy/admin-password.txt`). Dane M365 i SMTP uzupełnia się w `deploy/.env`,
+potem `sudo ./install.sh` ponownie.
+
+**Subdomeny klientów (opcjonalnie):** przy rekordzie wildcard `*.sale.firma.pl` ustaw `BASE_DOMAIN` w `.env`
+i odkomentuj blok wildcard w `deploy/Caddyfile` – każdy klient loguje się wtedy pod `<klient>.BASE_DOMAIN`.
+Bez tego wszyscy klienci logują się pod jedną domeną, a konto użytkownika wyznacza klienta.
+
+Zdalny podgląd tabletów: `docker compose --profile rustdesk up -d` (porty 21115–21117).
 
 ## Microsoft 365
 
 ### Jednorazowo – aplikacja ePartners w Entra ID
 
 1. Entra ID → Rejestracje aplikacji → Nowa rejestracja, **konta w dowolnym katalogu organizacyjnym (multi-tenant)**.
-2. Identyfikator URI przekierowania (Web): `PUBLIC_URL/m365/callback`, np. `https://sale.epartners.pl/m365/callback`
+2. Identyfikator URI przekierowania (Web): `PUBLIC_URL/m365/callback`, np. `https://konferencja.nettrade.pl/m365/callback`
    (jeden adres dla wszystkich klientów – po zgodzie użytkownik wraca na subdomenę swojego klienta).
 3. Uprawnienia API → Microsoft Graph → **uprawnienia aplikacji** → `Calendars.ReadWrite`.
 4. Certyfikaty i wpisy tajne → nowy wpis tajny. `M365_CLIENT_ID` i `M365_CLIENT_SECRET` wpisz do `.env`.
