@@ -194,9 +194,11 @@ def heartbeat(body: HeartbeatIn, request: Request, dev: Device = Depends(current
 # ------------------------------------------------------------------ akcje
 
 class ActionIn(BaseModel):
-    action: Literal["book_now", "end", "extend", "checkin"]
+    action: Literal["book_now", "book", "end", "extend", "checkin"]
     booking_id: int | None = None
     minutes: int = 30
+    # Dla "book": początek w ms od epoki (UTC); brak lub teraz = rezerwacja od teraz
+    start: int | None = None
     pin: str | None = None
     nfc_uid: str | None = None
 
@@ -233,11 +235,22 @@ def action(body: ActionIn, dev: Device = Depends(current_device), db: Session = 
     user = _authorize(db, tenant, body)
     actor = f"tablet:{dev.id}" + (f" ({user.email})" if user else "")
     try:
-        if body.action == "book_now":
-            if not 5 <= body.minutes <= 240:
+        organizer = (user.email, user.name) if user else ("", "")
+        if body.action in ("book_now", "book"):
+            if not 5 <= body.minutes <= 480:
                 raise HTTPException(400, "Nieprawidłowy czas")
-            svc.book_now(db, tenant, room, body.minutes, actor,
-                         organizer=(user.email, user.name) if user else ("", ""))
+            now = utcnow()
+            start = None
+            if body.action == "book" and body.start:
+                start = datetime.fromtimestamp(body.start / 1000, tz=ZoneInfo("UTC")).replace(tzinfo=None)
+            if start is None or start <= now + timedelta(minutes=1):
+                svc.book_now(db, tenant, room, body.minutes, actor, organizer=organizer)
+            else:
+                if start > now + timedelta(days=7):
+                    raise HTTPException(400, "Rezerwacja z tabletu – najwyżej 7 dni do przodu")
+                svc.create_booking(db, tenant, room, title="Rezerwacja z tabletu", start=start,
+                                   end=start + timedelta(minutes=body.minutes), organizer=organizer,
+                                   attendees=[], source="tablet", actor=actor)
         else:
             b = db.get(Booking, body.booking_id or 0)
             if b is None or b.room_id != room.id:

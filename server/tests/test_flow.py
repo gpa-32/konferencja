@@ -210,3 +210,31 @@ def test_m365_consent_callback(client):
     t = db.get(Tenant, t.id)
     assert t.m365_consented and t.m365_tenant_id == tid
     db.close()
+
+
+def test_tablet_book_with_start(client):
+    from app.models import Device
+    from app.security import new_token, token_hash
+    from app.services.bookings import to_local
+    from zoneinfo import ZoneInfo
+    db = SessionLocal()
+    d = db.query(Device).first()
+    tok = new_token()
+    d.token_hash = token_hash(tok)
+    t = db.query(Tenant).filter_by(slug="firma-a").one()
+    t.require_auth_on_tablet = False
+    t.calendar_provider = "local"
+    db.commit()
+    db.close()
+    H = {"Authorization": f"Bearer {tok}"}
+    start = (utcnow() + timedelta(days=3)).replace(hour=10, minute=0, second=0, microsecond=0)
+    ms = int(start.replace(tzinfo=ZoneInfo("UTC")).timestamp() * 1000)
+    r = client.post("/api/device/action", headers=H, json={"action": "book", "start": ms, "minutes": 45})
+    assert r.status_code == 200, r.text
+    db = SessionLocal()
+    b = db.query(Booking).filter_by(start=start).one()
+    assert b.end - b.start == timedelta(minutes=45) and b.source == "tablet"
+    db.close()
+    # kolizja
+    r = client.post("/api/device/action", headers=H, json={"action": "book", "start": ms + 15 * 60000, "minutes": 30})
+    assert r.status_code == 409

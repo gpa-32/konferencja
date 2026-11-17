@@ -76,7 +76,7 @@
                 android:orientation="horizontal">
 
                 <Button android:id="@+id/btnCheckin" style="@style/SalaButton" android:text="Potwierdź obecność" />
-                <Button android:id="@+id/btnBook" style="@style/SalaButton" android:text="Zarezerwuj teraz" />
+                <Button android:id="@+id/btnBook" style="@style/SalaButton" android:text="Zarezerwuj" />
                 <Button android:id="@+id/btnExtend" style="@style/SalaButton" android:text="Przedłuż" />
                 <Button android:id="@+id/btnEnd" style="@style/SalaButton" android:text="Zakończ" />
             </LinearLayout>

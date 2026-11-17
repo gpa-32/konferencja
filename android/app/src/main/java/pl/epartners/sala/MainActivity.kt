@@ -44,6 +44,10 @@ import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
+    companion object {
+        private const val BUTTONS_VISIBLE_MS = 60_000L
+    }
+
     private lateinit var prefs: Prefs
     private lateinit var api: Api
     private val ui = Handler(Looper.getMainLooper())
@@ -73,6 +77,11 @@ class MainActivity : AppCompatActivity() {
     private var nfcAdapter: NfcAdapter? = null
     private var nfcCallback: ((String) -> Unit)? = null
     private var destroyed = false
+
+    /** Przyciski akcji są ukryte; 6 szybkich dotknięć ekranu pokazuje je na 60 s. */
+    private var buttonsUntil = 0L
+    private var revealTaps = 0
+    private var revealFirstTap = 0L
 
     // ------------------------------------------------------------------ cykl życia
 
@@ -133,6 +142,26 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
     }
 
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
+        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+            val now = System.currentTimeMillis()
+            if (buttonsUntil > now) {
+                buttonsUntil = now + BUTTONS_VISIBLE_MS // każde dotknięcie przedłuża widoczność
+            } else {
+                if (now - revealFirstTap > 3000) {
+                    revealTaps = 0
+                    revealFirstTap = now
+                }
+                if (++revealTaps >= 6) {
+                    revealTaps = 0
+                    buttonsUntil = now + BUTTONS_VISIBLE_MS
+                    state?.let { updateButtons(it) }
+                }
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     @Deprecated("Deprecated in Java")
     @SuppressLint("MissingSuperCall")
     override fun onBackPressed() {
@@ -160,7 +189,7 @@ class MainActivity : AppCompatActivity() {
         btnExtend = findViewById(R.id.btnExtend)
         btnCheckin = findViewById(R.id.btnCheckin)
 
-        btnBook.setOnClickListener { chooseBookTime() }
+        btnBook.setOnClickListener { chooseBooking() }
         btnExtend.setOnClickListener { chooseExtendTime() }
         btnEnd.setOnClickListener {
             val id = currentId() ?: return@setOnClickListener
@@ -177,7 +206,7 @@ class MainActivity : AppCompatActivity() {
                 taps = 0
                 firstTap = now
             }
-            if (++taps >= 5) {
+            if (++taps >= 8) {
                 taps = 0
                 showServiceInfo()
             }
@@ -209,6 +238,10 @@ class MainActivity : AppCompatActivity() {
             clock.text = fmt.format(Date(nowServer()))
             updateCheckinCountdown()
             applyScreenSchedule()
+            if (buttonsUntil != 0L && System.currentTimeMillis() >= buttonsUntil) {
+                buttonsUntil = 0L
+                state?.let { updateButtons(it) }
+            }
             ui.postDelayed(this, 1000)
         }
     }
@@ -264,17 +297,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun doAction(action: String, bookingId: Int? = null, minutes: Int? = null) {
+    private fun doAction(action: String, bookingId: Int? = null, minutes: Int? = null, start: Long? = null) {
         val needAuth = state?.optJSONObject("device")?.optBoolean("require_auth") == true
         if (needAuth) {
-            askAuth { pin, nfc -> sendAction(action, bookingId, minutes, pin, nfc) }
+            askAuth { pin, nfc -> sendAction(action, bookingId, minutes, start, pin, nfc) }
         } else {
-            sendAction(action, bookingId, minutes, null, null)
+            sendAction(action, bookingId, minutes, start, null, null)
         }
     }
 
-    private fun sendAction(action: String, bookingId: Int?, minutes: Int?, pin: String?, nfc: String?) {
+    private fun sendAction(action: String, bookingId: Int?, minutes: Int?, start: Long?, pin: String?, nfc: String?) {
         val body = JSONObject().put("action", action)
+        start?.let { body.put("start", it) }
         bookingId?.let { body.put("booking_id", it) }
         minutes?.let { body.put("minutes", it) }
         pin?.let { body.put("pin", it) }
@@ -451,15 +485,7 @@ class MainActivity : AppCompatActivity() {
             people.text = "${current.optInt("people")} / ${current.optInt("capacity")} os."
         }
 
-        // Przyciski
-        val bookOpts = s.optJSONArray("book_options")
-        val extOpts = s.optJSONArray("extend_options")
-        btnBook.visibility = if (current == null && bookOpts != null && bookOpts.length() > 0) View.VISIBLE else View.GONE
-        btnEnd.visibility = if (current != null) View.VISIBLE else View.GONE
-        btnExtend.visibility = if (current != null && extOpts != null && extOpts.length() > 0) View.VISIBLE else View.GONE
-        val needsCheckin = current?.optBoolean("needs_checkin") == true ||
-            s.optJSONArray("next")?.let { arr -> (0 until arr.length()).any { arr.getJSONObject(it).optBoolean("needs_checkin") } } == true
-        btnCheckin.visibility = if (needsCheckin) View.VISIBLE else View.GONE
+        updateButtons(s)
 
         // Agenda
         agenda.removeAllViews()
@@ -477,6 +503,20 @@ class MainActivity : AppCompatActivity() {
         }
         footerMsg("")
         updateCheckinCountdown()
+    }
+
+    private fun updateButtons(s: JSONObject) {
+        val revealed = System.currentTimeMillis() < buttonsUntil
+        val current = s.optJSONObject("current")
+        val hasRoom = s.optJSONObject("room") != null
+        val extOpts = s.optJSONArray("extend_options")
+        btnBook.visibility = if (revealed && hasRoom) View.VISIBLE else View.GONE
+        btnEnd.visibility = if (revealed && current != null) View.VISIBLE else View.GONE
+        btnExtend.visibility = if (revealed && current != null && extOpts != null && extOpts.length() > 0) View.VISIBLE else View.GONE
+        // Potwierdzenie obecności zawsze widoczne, gdy jest potrzebne (inaczej sala zostanie zwolniona).
+        val needsCheckin = current?.optBoolean("needs_checkin") == true ||
+            s.optJSONArray("next")?.let { arr -> (0 until arr.length()).any { arr.getJSONObject(it).optBoolean("needs_checkin") } } == true
+        btnCheckin.visibility = if (needsCheckin) View.VISIBLE else View.GONE
     }
 
     private fun agendaItem(time: String, title: String, pending: Boolean): View {
@@ -554,14 +594,69 @@ class MainActivity : AppCompatActivity() {
             (0 until arr.length()).map { arr.getJSONObject(it) }.firstOrNull { it.optBoolean("needs_checkin") }?.optInt("id")
         }
 
-    private fun chooseBookTime() {
-        val opts = state?.optJSONArray("book_options") ?: return
-        val minutes = (0 until opts.length()).map { opts.getInt(it) }
-        AlertDialog.Builder(this)
-            .setTitle("Zarezerwuj salę na")
-            .setItems(minutes.map { label(it) }.toTypedArray()) { _, i -> doAction("book_now", minutes = minutes[i]) }
+    /** Rezerwacja: początek „teraz” albo wybrana godzina (dziś) + czas trwania. */
+    private fun chooseBooking() {
+        val tz = TimeZone.getTimeZone(state?.optString("timezone")?.takeIf { it.isNotBlank() } ?: "Europe/Warsaw")
+        val cal = Calendar.getInstance(tz).apply { timeInMillis = nowServer() }
+        // Domyślnie najbliższy pełny kwadrans
+        cal.add(Calendar.MINUTE, (15 - cal.get(Calendar.MINUTE) % 15) % 15)
+        val durations = listOf(15, 30, 45, 60, 90, 120, 180, 240)
+
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(8), dp(24), 0)
+        }
+        val group = android.widget.RadioGroup(this).apply { orientation = LinearLayout.HORIZONTAL }
+        val rNow = android.widget.RadioButton(this).apply { id = View.generateViewId(); text = "Teraz"; textSize = 20f }
+        val rAt = android.widget.RadioButton(this).apply { id = View.generateViewId(); text = "O godzinie"; textSize = 20f }
+        group.addView(rNow)
+        group.addView(rAt)
+        val picker = android.widget.TimePicker(this).apply {
+            setIs24HourView(true)
+            hour = cal.get(Calendar.HOUR_OF_DAY)
+            minute = cal.get(Calendar.MINUTE)
+        }
+        val freeNow = state?.optJSONObject("current") == null
+        if (freeNow) rNow.isChecked = true else { rAt.isChecked = true; rNow.isEnabled = false }
+        picker.visibility = if (rAt.isChecked) View.VISIBLE else View.GONE
+        group.setOnCheckedChangeListener { _, id -> picker.visibility = if (id == rAt.id) View.VISIBLE else View.GONE }
+        val durLabel = TextView(this).apply { text = "Czas trwania"; textSize = 18f; setPadding(0, dp(12), 0, 0) }
+        val spinner = android.widget.Spinner(this).apply {
+            adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item,
+                durations.map { label(it) })
+            setSelection(durations.indexOf(30))
+        }
+        box.addView(group)
+        box.addView(picker)
+        box.addView(durLabel)
+        box.addView(spinner)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Zarezerwuj salę")
+            .setView(android.widget.ScrollView(this).apply { addView(box) })
+            .setPositiveButton("Zarezerwuj") { _, _ ->
+                val minutes = durations[spinner.selectedItemPosition]
+                if (rNow.isChecked) {
+                    doAction("book_now", minutes = minutes)
+                } else {
+                    val h = picker.hour
+                    val m = picker.minute
+                    val start = Calendar.getInstance(tz).apply {
+                        timeInMillis = nowServer()
+                        set(Calendar.HOUR_OF_DAY, h); set(Calendar.MINUTE, m)
+                        set(Calendar.SECOND, 0); set(Calendar.MILLISECOND, 0)
+                    }.timeInMillis
+                    if (start < nowServer() - 60_000) {
+                        toast("Ta godzina już minęła")
+                    } else {
+                        doAction("book", minutes = minutes, start = start)
+                    }
+                }
+            }
             .setNegativeButton("Anuluj", null)
-            .show().also { autoDismiss(it) }
+            .create()
+        dialog.show()
+        autoDismiss(dialog)
     }
 
     private fun chooseExtendTime() {
