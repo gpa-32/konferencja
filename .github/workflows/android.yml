@@ -1,0 +1,54 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+    paths: ["android/**", ".github/workflows/android.yml"]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.14.3"
+      - name: Build release APK
+        run: gradle assembleRelease --no-daemon
+      - name: Rename APK
+        run: |
+          mkdir -p ../dist
+          cp app/build/outputs/apk/release/app-release.apk ../dist/sala-1.0.${GITHUB_RUN_NUMBER}-vc${GITHUB_RUN_NUMBER}.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sala-apk
+          path: dist/*.apk
+      - name: Publish release "latest"
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Sala – najnowsza wersja
+          prerelease: true
+          make_latest: false
+          files: dist/*.apk
+          body: |
+            Automatyczna kompilacja z gałęzi main (wersja 1.0.${{ github.run_number }}, versionCode ${{ github.run_number }}).
+            Wgraj APK w panelu (Klienci → Aplikacja tabletu), żeby tablety zaktualizowały się automatycznie.
+      - name: Publish tagged release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.apk

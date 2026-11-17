@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block content %}
+<h1>Sala: {{ r.name }}</h1>
+<div class="card"><form method="post" action="/rooms/{{ r.id }}">{% include "_csrf.html" %}{% include "_room_fields.html" %}<p><button>Zapisz</button> <a class="btn sec" href="/rooms">Wróć</a></p></form></div>
+<form method="post" action="/rooms/{{ r.id }}/delete" onsubmit="return confirm('Usunąć salę?')">{% include "_csrf.html" %}<button class="bad">Usuń salę</button></form>
+{% endblock %}

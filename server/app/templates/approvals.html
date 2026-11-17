@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block content %}
+<h1>Zatwierdzenia – przekroczona pojemność</h1>
+<p class="mute">Brak decyzji: po {{ tenant.approval_escalate_hours }} h powiadomienie trafia do zastępcy opiekuna; 15 min przed spotkaniem system {{ 'dopuszcza' if tenant.approval_default=='allow' else 'odrzuca' }} dodatkowe osoby.</p>
+{% for b in items %}<div class="card">
+<h2 style="margin-top:0">{{ b.title }} <span class="mute">· {{ b.room.name }} · {{ b.start|local(tz) }}–{{ (b.end|local(tz))[-5:] }}</span></h2>
+<p>Organizator: {{ b.organizer_name or b.organizer_email }} · źródło: {{ {'tablet':'tablet','panel':'panel','m365':'Outlook','google':'Google'}.get(b.source, b.source) }}<br>
+Osób: <b>{{ b.attendees|rejectattr('status','equalto','declined')|list|length }}</b> przy pojemności <b>{{ b.room.capacity }}</b></p>
+{% set waiting = b.attendees|selectattr('status','equalto','waiting')|list %}
+{% if waiting %}<p class="mute">Czekają na zaproszenie: {% for a in waiting %}{{ a.email }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
+{% else %}<p class="mute">Rezerwacja z kalendarza – zaproszenia wysłał już organizator. Odrzucenie oznacza, że sala odrzuci spotkanie.</p>{% endif %}
+<div class="row">
+<form method="post" action="/approvals/{{ b.id }}/approve">{% include "_csrf.html" %}<button class="ok">Zatwierdź</button></form>
+<form method="post" action="/approvals/{{ b.id }}/reject" class="row">{% include "_csrf.html" %}<div><input name="reason" placeholder="Powód / proponowana większa sala" style="width:320px"></div><div><button class="bad">Odrzuć</button></div></form>
+</div></div>
+{% else %}<div class="card mute">Nic nie czeka na zatwierdzenie.</div>{% endfor %}
+{% endblock %}

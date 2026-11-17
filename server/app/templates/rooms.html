@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block content %}
+<h1>Sale</h1>
+<table><tr><th>Sala</th><th>Pojemność</th><th>Kalendarz</th><th>Opiekun</th><th>Synchronizacja</th><th></th></tr>
+{% for r in items %}<tr>
+<td><b>{{ r.name }}</b>{% if r.site %}<br><span class="mute">{{ r.site.name }}</span>{% endif %}</td>
+<td>{{ r.capacity }}</td><td class="mute">{{ r.calendar_id or '—' }}</td>
+<td>{{ (r.caretaker.name or r.caretaker.email) if r.caretaker else '—' }}{% if r.deputy %}<br><span class="mute">zast. {{ r.deputy.name or r.deputy.email }}</span>{% endif %}</td>
+<td class="mute">{% if r.last_sync_error %}<span style="color:var(--bad)">{{ r.last_sync_error[:120] }}</span>{% elif r.last_sync_at %}OK {{ r.last_sync_at|local(ctx.tenant.timezone) }}{% else %}—{% endif %}</td>
+<td><a class="btn sec" href="/rooms/{{ r.id }}">Edytuj</a>
+<form method="post" action="/rooms/{{ r.id }}/sync" class="inline">{% include "_csrf.html" %}<button class="sec">Synchronizuj</button></form></td>
+</tr>{% else %}<tr><td colspan="6" class="mute">Brak sal.</td></tr>{% endfor %}</table>
+<div class="card" style="margin-top:20px"><h2 style="margin-top:0">Nowa sala</h2>
+<form method="post" action="/rooms">{% include "_csrf.html" %}{% with r=None %}{% include "_room_fields.html" %}{% endwith %}<p><button>Dodaj salę</button></p></form></div>
+<div class="card"><h2 style="margin-top:0">Lokalizacje</h2>
+<p class="mute">{% for s in sites %}{{ s.name }}{% if not loop.last %}, {% endif %}{% else %}brak{% endfor %}</p>
+<form method="post" action="/sites" class="row">{% include "_csrf.html" %}<div><input name="name" placeholder="np. Budynek A, piętro 2"></div><div><button class="sec">Dodaj lokalizację</button></div></form></div>
+{% endblock %}

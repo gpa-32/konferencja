@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="free">#1B8A3A</color>
+    <color name="busy">#C62828</color>
+    <color name="pending">#C77700</color>
+    <color name="off">#37474F</color>
+    <color name="panel">#14213D</color>
+    <color name="white">#FFFFFF</color>
+    <color name="white_dim">#CCFFFFFF</color>
+</resources>

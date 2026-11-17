@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% block content %}
+<h1>Ustawienia</h1>
+<div class="card"><form method="post" action="/settings">{% include "_csrf.html" %}<div class="row">
+<div><label>Strefa czasowa</label><select name="timezone">{% for z in tzs %}<option {% if z==t.timezone %}selected{% endif %}>{{ z }}</option>{% endfor %}</select></div>
+<div><label>Kalendarz</label><select name="calendar_provider">{% for k,v in [('m365','Microsoft 365'),('google','Google Workspace (etap 2)'),('local','lokalny (bez integracji)')] %}<option value="{{ k }}" {% if t.calendar_provider==k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+<div><label>Akcje na tablecie</label><select name="require_auth_on_tablet"><option value="0">bez autoryzacji</option><option value="1" {% if t.require_auth_on_tablet %}selected{% endif %}>wymagaj PIN lub karty NFC</option></select></div>
+</div><div class="row">
+<div><label>Liczenie uczestników</label><select name="count_only_accepted"><option value="0">wszyscy zaproszeni</option><option value="1" {% if t.count_only_accepted %}selected{% endif %}>tylko „akceptuję” i „wstępnie”</option></select></div>
+<div><label>Eskalacja do zastępcy po (h)</label><input name="approval_escalate_hours" type="number" min="1" value="{{ t.approval_escalate_hours }}" style="width:90px"></div>
+<div><label>Brak decyzji opiekuna przed spotkaniem</label><select name="approval_default"><option value="reject">odrzuć dodatkowe osoby</option><option value="allow" {% if t.approval_default=='allow' %}selected{% endif %}>dopuść</option></select></div>
+</div><p><button>Zapisz</button></p></form></div>
+<div class="card"><h2 style="margin-top:0">Microsoft 365</h2>
+{% if not m365_ready %}<p style="color:var(--bad)">Serwer nie ma skonfigurowanej aplikacji Entra ID (M365_CLIENT_ID / M365_CLIENT_SECRET) – skontaktuj się z ePartners.</p>
+{% elif t.m365_consented %}<p><span class="pill free">połączono</span> dzierżawa <code>{{ t.m365_tenant_id }}</code></p>
+{% else %}<p>Administrator Microsoft 365 musi udzielić zgody aplikacji ePartners na dostęp do kalendarzy sal.</p>{% endif %}
+{% if m365_ready %}<p><a class="btn" href="/m365/consent">{{ 'Ponów zgodę administratora' if t.m365_consented else 'Połącz z Microsoft 365' }}</a></p>{% endif %}
+<p class="mute">Po udzieleniu zgody ogranicz dostęp aplikacji tylko do skrzynek sal (PowerShell Exchange Online – instrukcja w README),
+a w każdej skrzynce sali wyłącz automatyczne akceptowanie: <code>Set-CalendarProcessing -Identity sala@firma.pl -AutomateProcessing AutoUpdate</code>.
+Adres powiadomień: <code>{{ webhook_url }}</code></p></div>
+{% endblock %}

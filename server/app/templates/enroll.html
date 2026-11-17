@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% block content %}
+<h1>Kod dodania tabletu{% if room %} – {{ room.name }}{% endif %}</h1>
+<div class="card row" style="align-items:flex-start">
+<div><img class="qr" src="data:image/png;base64,{{ qr }}" alt="QR" width="300"></div>
+<div style="max-width:520px">
+<ol>
+<li>Zainstaluj aplikację <b>Sala</b> na tablecie (APK z GitHub Releases lub z serwera).</li>
+<li>Uruchom aplikację i wybierz <b>Skanuj kod QR</b>.</li>
+<li>Albo wpisz ręcznie:<br>serwer: <code>{{ server }}</code><br>kod: <code style="font-size:18px">{{ et.code }}</code></li>
+</ol>
+<p class="mute">Ważny do {{ et.expires_at|local(tz) }}.
+{% if et.used_at %}<br><b>Wykorzystany {{ et.used_at|local(tz) }}</b> – <a href="/devices/{{ et.device_id }}">zobacz tablet</a>{% endif %}</p>
+<p><a class="btn sec" href="/devices">Wróć do listy</a></p>
+</div></div>
+{% endblock %}

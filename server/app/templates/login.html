@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block content %}
+<div class="card login"><h1>Logowanie{% if slug %} · {{ slug }}{% endif %}</h1>
+{% if error %}<div class="flash err">{{ error }}</div>{% endif %}
+<form method="post" action="/login">{% include "_csrf.html" %}
+<label>E-mail</label><input name="email" type="email" required autofocus style="width:100%">
+<label>Hasło</label><input name="password" type="password" required style="width:100%">
+<p><button>Zaloguj</button></p></form></div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% block content %}
+<h1>Użytkownicy</h1>
+<table><tr><th>Użytkownik</th><th>Rola</th><th>PIN</th><th>Edycja</th></tr>
+{% for u in items %}<tr><td><b>{{ u.name or '—' }}</b><br><span class="mute">{{ u.email }}</span></td>
+<td>{{ ROLES_PL[u.role] }}</td><td>{{ 'tak' if u.pin_hash else '—' }}</td>
+<td><form method="post" action="/users/{{ u.id }}" class="row">{% include "_csrf.html" %}
+<input name="name" value="{{ u.name }}" style="width:140px">
+<select name="role">{% for r in ['admin','caretaker','user'] %}<option value="{{ r }}" {% if u.role==r %}selected{% endif %}>{{ ROLES_PL[r] }}</option>{% endfor %}</select>
+<input name="pin" placeholder="nowy PIN" style="width:90px" inputmode="numeric">
+<input name="password" placeholder="nowe hasło" style="width:110px">
+<select name="active"><option value="1" {% if u.active %}selected{% endif %}>aktywny</option><option value="0" {% if not u.active %}selected{% endif %}>wyłączony</option></select>
+<button class="sec">Zapisz</button></form></td></tr>{% endfor %}</table>
+<div class="card" style="margin-top:20px"><h2 style="margin-top:0">Nowy użytkownik</h2>
+<form method="post" action="/users">{% include "_csrf.html" %}<div class="row">
+<div><label>Imię i nazwisko</label><input name="name"></div><div><label>E-mail</label><input name="email" type="email" required></div>
+<div><label>Rola</label><select name="role"><option value="user">użytkownik</option><option value="caretaker">opiekun sali</option><option value="admin">administrator</option></select></div>
+<div><label>Hasło do panelu</label><input name="password"></div><div><label>PIN na tablet</label><input name="pin" inputmode="numeric" style="width:90px"></div>
+<div><button>Dodaj</button></div></div></form></div>
+<div class="card"><h2 style="margin-top:0">Karty NFC</h2>
+<table><tr><th>UID</th><th>Użytkownik</th><th></th></tr>{% for c in cards %}<tr><td><code>{{ c.uid }}</code></td><td>{{ c.user.name or c.user.email }}</td>
+<td><form method="post" action="/nfc/{{ c.id }}/delete">{% include "_csrf.html" %}<button class="sec">Usuń</button></form></td></tr>{% else %}<tr><td colspan="3" class="mute">Brak kart.</td></tr>{% endfor %}</table>
+{% if unknown %}<p class="mute">Ostatnio przyłożone nieznane karty: {% for a in unknown %}<code>{{ a.details }}</code> {% endfor %}</p>{% endif %}
+<form method="post" action="/nfc" class="row">{% include "_csrf.html" %}<div><label>UID karty</label><input name="uid" required></div>
+<div><label>Użytkownik</label><select name="user_id">{% for u in items %}<option value="{{ u.id }}">{{ u.name or u.email }}</option>{% endfor %}</select></div><div><button class="sec">Dodaj kartę</button></div></form></div>
+{% endblock %}

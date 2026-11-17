@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% block content %}
+<h1>Tablet: {{ d.name }} {% if online %}<span class="pill free">online</span>{% else %}<span class="pill busy">offline</span>{% endif %}</h1>
+<div class="row" style="align-items:flex-start">
+<div class="card" style="flex:1;min-width:340px">
+<h2 style="margin-top:0">Ustawienia</h2>
+<form method="post" action="/devices/{{ d.id }}">{% include "_csrf.html" %}
+<label>Nazwa</label><input name="name" value="{{ d.name }}">
+<label>Sala</label><select name="room_id"><option value="">—</option>{% for r in rooms %}<option value="{{ r.id }}" {% if d.room_id==r.id %}selected{% endif %}>{{ r.name }}</option>{% endfor %}</select>
+<label>Jasność ekranu (%)</label><input name="brightness" type="number" min="5" max="100" value="{{ d.brightness }}">
+<div class="row"><div><label>Wygaszaj ekran od</label><input name="screen_off_from" value="{{ d.screen_off_from or '' }}" placeholder="20:00" style="width:90px"></div>
+<div><label>do</label><input name="screen_off_to" value="{{ d.screen_off_to or '' }}" placeholder="07:00" style="width:90px"></div></div>
+{% if d.has_led or d.is_root %}<label>Listwa LED – ścieżki sysfs (JSON, tylko gdy model nie jest rozpoznany)</label>
+<textarea name="led_config" placeholder='{"red": "/sys/class/leds/red/brightness", "green": "/sys/class/leds/green/brightness"}'>{{ d.led_config or '' }}</textarea>{% endif %}
+<p><button>Zapisz i wyślij na tablet</button></p></form>
+</div>
+<div class="card" style="flex:1;min-width:340px">
+<h2 style="margin-top:0">Zdalne zarządzanie</h2>
+<p class="mute">Połączenie na żywo (WebSocket): {{ 'tak' if ws else 'nie' }}<br>
+Ostatni kontakt: {{ d.last_seen|local(tz) }} · IP {{ d.ip or '—' }}{% if d.battery is not none %} · bateria {{ d.battery }}%{% endif %}<br>
+{{ d.model }} · Android {{ d.android_version }} · aplikacja {{ d.app_version }}<br>
+Funkcje: {% if d.has_led %}LED {% endif %}{% if d.has_nfc %}NFC {% endif %}{% if d.is_root %}root {% endif %}{% if d.is_device_owner %}tryb kiosku (device owner){% endif %}<br>
+{% if d.rustdesk_id %}RustDesk ID: <code>{{ d.rustdesk_id }}</code>{% else %}RustDesk: brak (zainstaluj klienta RustDesk z serwerem ePartners){% endif %}</p>
+<div class="row">
+{% for c, label in [('reload','Odśwież ekran'),('restart_app','Restart aplikacji'),('screenshot','Zrzut ekranu'),('update','Sprawdź aktualizację'),('led_test','Test LED'),('exit_kiosk','Wyjdź z kiosku'),('reboot','Restart tabletu')] %}
+<form method="post" action="/devices/{{ d.id }}/command">{% include "_csrf.html" %}<input type="hidden" name="command" value="{{ c }}">
+<button class="{{ 'bad' if c=='reboot' else 'sec' }}" {% if c=='reboot' %}onclick="return confirm('Zrestartować tablet?')"{% endif %}>{{ label }}</button></form>
+{% endfor %}</div>
+{% if has_shot %}<h2>Zrzut ekranu <span class="mute">{{ d.screenshot_at|local(tz) }}</span></h2>
+<img src="/devices/{{ d.id }}/screenshot.png?t={{ d.screenshot_at.timestamp() if d.screenshot_at else 0 }}" style="max-width:100%;border:1px solid var(--line)">{% endif %}
+</div></div>
+<form method="post" action="/devices/{{ d.id }}/delete" onsubmit="return confirm('Usunąć tablet? Trzeba będzie go dodać ponownie kodem QR.')">{% include "_csrf.html" %}<button class="bad">Usuń tablet</button></form>
+{% endblock %}

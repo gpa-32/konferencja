@@ -1,0 +1,39 @@
+{% extends "base.html" %}{% block content %}
+<h1>Klienci</h1>
+<table><tr><th>Klient</th><th>Adres</th><th>Kalendarz</th><th>Sale / tablety (limit)</th><th>Aktywny</th><th></th></tr>
+{% for t in items %}<tr>
+<td><b>{{ t.name }}</b><br><span class="mute">{{ t.slug }}</span></td>
+<td class="mute">{% if base_domain %}{{ t.slug }}.{{ base_domain }}{% else %}—{% endif %}</td>
+<td>{{ {'local':'lokalny','m365':'Microsoft 365','google':'Google'}[t.calendar_provider] }}{% if t.calendar_provider=='m365' and not t.m365_consented %} <span class="pill pending">brak zgody</span>{% endif %}</td>
+<td>{{ stats[t.id][0] }}/{{ t.max_rooms }} · {{ stats[t.id][1] }}/{{ t.max_devices }}</td>
+<td colspan="2">
+<form method="post" action="/tenants/{{ t.id }}" class="row">{% include "_csrf.html" %}
+<input name="name" value="{{ t.name }}" style="width:150px">
+<input name="max_rooms" type="number" value="{{ t.max_rooms }}" style="width:70px" title="Limit sal">
+<input name="max_devices" type="number" value="{{ t.max_devices }}" style="width:70px" title="Limit tabletów">
+<select name="active"><option value="1" {% if t.active %}selected{% endif %}>aktywny</option><option value="0" {% if not t.active %}selected{% endif %}>wyłączony</option></select>
+<button class="sec">Zapisz</button></form>
+<form method="post" action="/tenants/{{ t.id }}/enter" class="inline">{% include "_csrf.html" %}<button>Przejdź do klienta</button></form>
+</td></tr>{% else %}<tr><td colspan="6" class="mute">Brak klientów.</td></tr>{% endfor %}
+</table>
+<div class="card" style="margin-top:20px"><h2 style="margin-top:0">Nowy klient</h2>
+<form method="post" action="/tenants">{% include "_csrf.html" %}<div class="row">
+<div><label>Nazwa firmy</label><input name="name" required></div>
+<div><label>Identyfikator (subdomena)</label><input name="slug" required pattern="[a-z0-9][a-z0-9-]{1,40}"></div>
+<div><label>Kalendarz</label><select name="calendar_provider"><option value="m365">Microsoft 365</option><option value="google">Google Workspace</option><option value="local">lokalny (bez integracji)</option></select></div>
+<div><label>Limit sal</label><input name="max_rooms" type="number" value="10" style="width:90px"></div>
+<div><label>Limit tabletów</label><input name="max_devices" type="number" value="10" style="width:90px"></div>
+</div><div class="row">
+<div><label>Administrator – imię i nazwisko</label><input name="admin_name"></div>
+<div><label>Administrator – e-mail</label><input name="admin_email" type="email" required></div>
+<div><label>Hasło startowe (min. 10 znaków)</label><input name="admin_password" type="text" minlength="10" required></div>
+<div><button>Utwórz klienta</button></div></div></form></div>
+<div class="card"><h2 style="margin-top:0">Aplikacja tabletu (aktualizacje OTA)</h2>
+<p class="mute">Aktualna wersja na serwerze: {% if apk %}<b>{{ apk.version_name }}</b> (versionCode {{ apk.version_code }}){% else %}brak{% endif %}.
+APK pobierzesz z GitHub Releases (gpa-32/konferencja) – numer wersji jest w nazwie pliku.</p>
+<form method="post" action="/apk" enctype="multipart/form-data" class="row">{% include "_csrf.html" %}
+<div><label>Plik APK</label><input type="file" name="apk" accept=".apk" required></div>
+<div><label>versionCode</label><input name="version_code" type="number" required style="width:100px"></div>
+<div><label>Nazwa wersji</label><input name="version_name" placeholder="1.0.12" style="width:110px"></div>
+<div><button>Wgraj</button></div></form></div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}{% block content %}
+<h1>Rezerwacje</h1>
+<div class="card"><h2 style="margin-top:0">Nowa rezerwacja</h2>
+<form method="post" action="/bookings">{% include "_csrf.html" %}<div class="row">
+<div><label>Sala</label><select name="room_id" required>{% for r in rooms %}<option value="{{ r.id }}">{{ r.name }} ({{ r.capacity }} os.)</option>{% endfor %}</select></div>
+<div><label>Temat</label><input name="title" required></div>
+<div><label>Początek</label><input name="start" type="datetime-local" value="{{ default_start }}" required></div>
+<div><label>Czas</label><select name="duration">{% for m in [15,30,45,60,90,120,180,240,480] %}<option value="{{ m }}" {% if m==60 %}selected{% endif %}>{{ m//60 ~ ' h ' if m>=60 else '' }}{{ m%60 ~ ' min' if m%60 else '' }}</option>{% endfor %}</select></div>
+</div>
+<label>Uczestnicy – adresy e-mail (oddzielone przecinkiem, spacją lub w nowych liniach). Ty jesteś organizatorem.</label>
+<textarea name="attendees"></textarea>
+<p class="mute">Jeżeli liczba osób przekroczy pojemność sali, zaproszenia ponad limit poczekają na zatwierdzenie przez opiekuna sali.</p>
+<p><button>Zarezerwuj</button></p></form></div>
+<form class="row" method="get"><div><select name="room" onchange="this.form.submit()"><option value="">Wszystkie sale</option>{% for r in rooms %}<option value="{{ r.id }}" {% if room_filter==r.id %}selected{% endif %}>{{ r.name }}</option>{% endfor %}</select></div></form><br>
+<table><tr><th>Termin</th><th>Sala</th><th>Spotkanie</th><th>Osoby</th><th>Źródło</th><th>Status</th><th></th></tr>
+{% for b in items %}<tr>
+<td>{{ b.start|local(tz) }}<br><span class="mute">do {{ b.end|local(tz) }}</span></td>
+<td>{{ b.room.name }}</td>
+<td><b>{{ 'Spotkanie prywatne' if b.is_private else b.title }}</b><br><span class="mute">{{ b.organizer_name or b.organizer_email }}</span></td>
+<td>{{ b.attendees|rejectattr('status','in',['declined','waiting'])|list|length }}/{{ b.room.capacity }}
+{% set w = b.attendees|selectattr('status','equalto','waiting')|list|length %}{% if w %}<br><span class="mute">+{{ w }} oczekuje</span>{% endif %}</td>
+<td class="mute">{{ {'tablet':'tablet','panel':'panel','m365':'Outlook','google':'Google'}.get(b.source, b.source) }}</td>
+<td><span class="pill {{ {'confirmed':'free','pending_approval':'pending'}.get(b.status,'off') }}">{{ STATUS_PL.get(b.status, b.status) }}</span></td>
+<td>{% if b.status in ['confirmed','pending_approval'] %}<form method="post" action="/bookings/{{ b.id }}/cancel" class="inline" onsubmit="return confirm('Anulować rezerwację?')">{% include "_csrf.html" %}<button class="sec">Anuluj</button></form>{% endif %}</td>
+</tr>{% else %}<tr><td colspan="7" class="mute">Brak rezerwacji.</td></tr>{% endfor %}</table>
+{% endblock %}

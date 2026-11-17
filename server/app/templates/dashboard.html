@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block content %}
+<h1>Pulpit</h1>
+{% if pending %}<div class="flash err"><a href="/approvals">{{ pending }} rezerwacji czeka na zatwierdzenie</a></div>{% endif %}
+{% if not rows %}<div class="card">Brak sal. {% if ctx.is_admin %}<a href="/rooms">Dodaj pierwszą salę</a>.{% endif %}</div>{% endif %}
+<div class="grid">
+{% for x in rows %}<div class="card room">
+<h3>{{ x.room.name }}</h3>
+{% if x.current %}
+ {% if x.current.status == 'pending_approval' %}<span class="pill pending">zajęta – czeka na zatwierdzenie</span>{% else %}<span class="pill busy">zajęta</span>{% endif %}
+ <p><b>{{ 'Spotkanie prywatne' if x.current.is_private else x.current.title }}</b><br>
+ <span class="mute">do {{ x.current.end|local(tz) }} · {{ x.people }}/{{ x.room.capacity }} os.</span></p>
+{% else %}<span class="pill free">wolna</span><p class="mute">pojemność {{ x.room.capacity }} os.</p>{% endif %}
+{% if x.next %}<p class="mute">Następna: {{ x.next.start|local(tz) }} – {{ 'Spotkanie prywatne' if x.next.is_private else x.next.title }}</p>{% endif %}
+<p class="mute">Tablety: {% for d in x.devices %}<span class="pill {{ 'free' if device_online(d) else 'off' }}">{{ d.name }}</span> {% else %}brak{% endfor %}</p>
+{% if x.room.last_sync_error %}<p class="mute" style="color:var(--bad)">Kalendarz: {{ x.room.last_sync_error[:160] }}</p>{% endif %}
+</div>{% endfor %}
+</div>
+{% endblock %}

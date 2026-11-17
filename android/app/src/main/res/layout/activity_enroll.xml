@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/panel">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="40dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Dodaj tablet do systemu"
+            android:textColor="@color/white"
+            android:textSize="34sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="W panelu WWW: Tablety → Generuj kod QR. Zeskanuj kod albo wpisz adres serwera i kod ręcznie."
+            android:textColor="@color/white_dim"
+            android:textSize="18sp" />
+
+        <Button
+            android:id="@+id/btnScan"
+            style="@style/SalaButton"
+            android:layout_width="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_weight="0"
+            android:text="Skanuj kod QR" />
+
+        <EditText
+            android:id="@+id/server"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:hint="https://sale.epartners.pl"
+            android:inputType="textUri"
+            android:textColor="@color/white"
+            android:textColorHint="#88FFFFFF"
+            android:textSize="20sp" />
+
+        <EditText
+            android:id="@+id/code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Kod, np. ABCD-EFGH-JKLM-NPQR"
+            android:inputType="textCapCharacters|textNoSuggestions"
+            android:textColor="@color/white"
+            android:textColorHint="#88FFFFFF"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/btnEnroll"
+            style="@style/SalaButton"
+            android:layout_width="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_weight="0"
+            android:text="Zarejestruj" />
+
+        <TextView
+            android:id="@+id/message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/white"
+            android:textSize="18sp" />
+    </LinearLayout>
+</ScrollView>

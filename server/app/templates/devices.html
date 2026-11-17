@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block content %}
+<h1>Tablety</h1>
+<div class="card"><h2 style="margin-top:0">Dodaj tablet</h2>
+<p class="mute">Wygeneruj kod QR i zeskanuj go aplikacją na tablecie. Kod jest jednorazowy i ważny 24 godziny.</p>
+<form method="post" action="/devices/enroll" class="row">{% include "_csrf.html" %}
+<div><label>Sala</label><select name="room_id"><option value="">(przypiszę później)</option>{% for r in rooms %}<option value="{{ r.id }}">{{ r.name }}</option>{% endfor %}</select></div>
+<div><button>Generuj kod QR</button></div></form></div>
+<table><tr><th>Tablet</th><th>Sala</th><th>Stan</th><th>Model</th><th>Funkcje</th><th>Ostatni kontakt</th></tr>
+{% for d in items %}<tr>
+<td><a href="/devices/{{ d.id }}"><b>{{ d.name }}</b></a></td><td>{{ d.room.name if d.room else '—' }}</td>
+<td>{% if device_online(d) %}<span class="pill free">online</span>{% else %}<span class="pill busy">offline</span>{% endif %}</td>
+<td class="mute">{{ d.model }}<br>Android {{ d.android_version }} · app {{ d.app_version }}</td>
+<td class="mute">{% if d.has_led %}LED {% endif %}{% if d.has_nfc %}NFC {% endif %}{% if d.is_root %}root {% endif %}{% if d.is_device_owner %}kiosk{% endif %}</td>
+<td class="mute">{{ d.last_seen|local(ctx.tenant.timezone) }}</td></tr>
+{% else %}<tr><td colspan="6" class="mute">Brak tabletów.</td></tr>{% endfor %}</table>
+{% endblock %}

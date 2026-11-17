@@ -1,0 +1,15 @@
+<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Sale konferencyjne{% endblock %}</title><link rel="stylesheet" href="/static/style.css"></head><body>
+{% if ctx %}<header>
+<span class="brand">Sale{% if ctx.tenant %} · {{ ctx.tenant.name }}{% endif %}</span>
+{% if ctx.tenant %}
+<a href="/">Pulpit</a><a href="/bookings">Rezerwacje</a><a href="/approvals">Zatwierdzenia</a>
+{% if ctx.is_admin %}<a href="/rooms">Sale</a><a href="/devices">Tablety</a><a href="/users">Użytkownicy</a><a href="/settings">Ustawienia</a><a href="/audit">Dziennik</a>{% endif %}
+{% endif %}
+{% if ctx.is_super %}<a href="/tenants">Klienci</a>{% endif %}
+<span class="sp"></span><span class="mute" style="color:#9fb0cf">{{ ctx.user.email }}</span><a href="/logout">Wyloguj</a>
+</header>{% endif %}
+<main>
+{% if flash %}<div class="flash {% if flash.error %}err{% endif %}">{{ flash.msg }}</div>{% endif %}
+{% block content %}{% endblock %}
+</main></body></html>

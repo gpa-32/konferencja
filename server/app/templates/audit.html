@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block content %}
+<h1>Dziennik zdarzeń</h1>
+<table><tr><th>Czas</th><th>Kto</th><th>Zdarzenie</th><th>Szczegóły</th></tr>
+{% for a in items %}<tr><td class="mute">{{ a.created_at|local(tz) }}</td><td>{{ a.actor }}</td><td><code>{{ a.action }}</code></td><td>{{ a.details }}</td></tr>{% endfor %}</table>
+{% endblock %}

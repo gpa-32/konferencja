@@ -1,0 +1,15 @@
+{
+	email {$ACME_EMAIL}
+	# Certyfikaty dla subdomen klientów wystawiane na żądanie – tylko dla istniejących klientów.
+	on_demand_tls {
+		ask http://app:8000/api/tls-check
+	}
+}
+
+{$BASE_DOMAIN}, *.{$BASE_DOMAIN} {
+	tls {
+		on_demand
+	}
+	encode gzip
+	reverse_proxy app:8000
+}
