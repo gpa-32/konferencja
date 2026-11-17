@@ -45,7 +45,7 @@ import java.util.concurrent.Executors
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val BUTTONS_VISIBLE_MS = 60_000L
+        private const val BUTTONS_VISIBLE_MS = 30_000L
     }
 
     private lateinit var prefs: Prefs
@@ -78,7 +78,7 @@ class MainActivity : AppCompatActivity() {
     private var nfcCallback: ((String) -> Unit)? = null
     private var destroyed = false
 
-    /** Przyciski akcji są ukryte; 6 szybkich dotknięć ekranu pokazuje je na 60 s. */
+    /** Przyciski akcji są ukryte; 6 szybkich dotknięć ekranu pokazuje je na 30 s. */
     private var buttonsUntil = 0L
     private var revealTaps = 0
     private var revealFirstTap = 0L
@@ -498,7 +498,10 @@ class MainActivity : AppCompatActivity() {
                 agenda.addView(agendaItem(
                     "${b.optString("start_local")} – ${b.optString("end_local")}",
                     b.optString("title") + (b.optString("organizer").takeIf { it.isNotBlank() }?.let { "\n$it" } ?: ""),
-                    b.optString("status") == "pending_approval"))
+                    b.optString("status") == "pending_approval").apply {
+                    // Po odsłonięciu przycisków (6 dotknięć) – dotknięcie spotkania: przedłuż / odwołaj.
+                    setOnClickListener { if (System.currentTimeMillis() < buttonsUntil) upcomingMenu(b) }
+                })
             }
         }
         footerMsg("")
@@ -666,6 +669,23 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Przedłuż spotkanie o")
             .setItems(minutes.map { label(it) }.toTypedArray()) { _, i -> doAction("extend", id, minutes[i]) }
+            .setNegativeButton("Anuluj", null)
+            .show().also { autoDismiss(it) }
+    }
+
+    private fun upcomingMenu(b: JSONObject) {
+        val id = b.optInt("id")
+        val title = "${b.optString("start_local")} – ${b.optString("end_local")}  ${b.optString("title")}"
+        val ext = listOf(15, 30, 60)
+        val items = ext.map { "Przedłuż o ${label(it)}" } + "Odwołaj rezerwację"
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setItems(items.toTypedArray()) { _, i ->
+                if (i < ext.size) doAction("extend", id, ext[i])
+                else confirm("Odwołać rezerwację ${b.optString("start_local")} – ${b.optString("end_local")}?") {
+                    doAction("end", id)
+                }
+            }
             .setNegativeButton("Anuluj", null)
             .show().also { autoDismiss(it) }
     }
